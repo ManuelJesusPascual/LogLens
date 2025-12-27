@@ -1,9 +1,6 @@
 # LogLens API
 
-LogLens is a lightweight developer tool built with Java 21 and Spring Boot 3. It analyzes application logs and provides
-a concise summary of unique errors, including their occurrences and the lines where they appear. Designed for fast
-deployment and easy integration into CI pipelines, LogLens helps developers quickly identify and debug issues without
-complex observability setups.
+LogLens is a lightweight developer tool built with Java 21 and Spring Boot 3. It analyzes application logs and provides a concise summary of unique errors, including their occurrences and the lines where they appear. Designed for fast deployment and easy integration into CI pipelines, LogLens helps developers quickly identify and debug issues without complex observability setups.
 
 ## 🚀 Features
 
@@ -13,6 +10,20 @@ complex observability setups.
 - Track the lines where each error appears
 - Returns a clean JSON response
 - Quick deployment with Spring Boot
+
+## 🌐 Live Demo
+
+The API is deployed and available at:
+
+```
+https://loglens-production.up.railway.app/api/analyze
+```
+
+You can also access the Swagger documentation at:
+
+```
+https://loglens-production.up.railway.app/swagger-ui.html
+```
 
 ## 📦 Installation
 
@@ -35,7 +46,7 @@ mvn clean package
 mvn spring-boot:run
 ```
 
-The API will be available at `http://localhost:8080/analyze`
+The API will be available at `http://localhost:8080/api/analyze`
 
 ## 🔹 Usage
 
@@ -64,16 +75,12 @@ Paste your log as plain text. Example:
     {
       "message": "ERROR NullPointerException at UserService.java:45",
       "count": 1,
-      "lines": [
-        2
-      ]
+      "lines": [2]
     },
     {
       "message": "ERROR Connection timeout",
       "count": 1,
-      "lines": [
-        4
-      ]
+      "lines": [4]
     }
   ],
   "summary": {
@@ -101,7 +108,7 @@ Paste your log as plain text. Example:
 After running the app, you can access the API docs at:
 
 ```
-http://localhost:8080/swagger-ui.html
+http://localhost:8080/swagger-ui/index.html
 ```
 
 ## 🧪 Testing
@@ -113,7 +120,6 @@ mvn test
 ```
 
 Tests cover:
-
 - Basic log parsing
 - Error detection (`ERROR`, `Exception`, `Caused by`)
 - Grouping repeated errors

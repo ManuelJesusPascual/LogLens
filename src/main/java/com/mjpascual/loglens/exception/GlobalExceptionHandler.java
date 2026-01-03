@@ -17,7 +17,7 @@ import java.util.Map;
  * are caught and returned with appropriate HTTP status codes and error messages.
  *
  */
-@RestControllerAdvice(basePackages = "com.mjpascual.loglens.controller")
+@RestControllerAdvice
 public class GlobalExceptionHandler {
 
     /**
@@ -33,5 +33,19 @@ public class GlobalExceptionHandler {
         Map<String, String> resp = new HashMap<>();
         resp.put("error", "Unexpected Error: " + ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(resp);
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<Map<String, String>> handleUnauthorized(UnauthorizedException ex) {
+        Map<String, String> resp = new HashMap<>();
+        resp.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(resp);
+    }
+
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<Map<String, String>> handleTooManyRequests(TooManyRequestsException ex) {
+        Map<String, String> resp = new HashMap<>();
+        resp.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(resp);
     }
 }

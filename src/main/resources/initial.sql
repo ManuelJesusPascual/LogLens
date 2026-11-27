@@ -1,7 +1,6 @@
 CREATE TABLE IF NOT EXISTS api_keys (
   id INTEGER PRIMARY KEY,
   key_hash TEXT NOT NULL UNIQUE,
-  plan TEXT NOT NULL,
   requests INTEGER NOT NULL,
   last_reset DATE NOT NULL
 );

@@ -2,7 +2,6 @@ package com.mjpascual.loglens.service;
 
 import com.mjpascual.loglens.exception.TooManyRequestsException;
 import com.mjpascual.loglens.exception.UnauthorizedException;
-import com.mjpascual.loglens.model.ApiKey;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,8 +31,8 @@ class ApiKeyServiceTest {
 
     @Test
     void concurrentRequestsCannotOverrunTheMonthlyLimit() throws Exception {
-        String key = service.generateApiKey(ApiKey.Plan.FREE);
-        jdbc.update("UPDATE api_keys SET requests = ? WHERE key_hash = ?", ApiKeyService.FREE_LIMIT - 1, ApiKeyService.hash(key));
+        String key = service.generateApiKey();
+        jdbc.update("UPDATE api_keys SET requests = ? WHERE key_hash = ?", ApiKeyService.MONTHLY_LIMIT - 1, ApiKeyService.hash(key));
 
         Callable<Boolean> call = () -> {
             try {
@@ -50,14 +49,25 @@ class ApiKeyServiceTest {
             }
             assertEquals(1, accepted);
         }
-        assertEquals(List.of(ApiKeyService.FREE_LIMIT), requestsOf(key));
+        assertEquals(List.of(ApiKeyService.MONTHLY_LIMIT), requestsOf(key));
+    }
+
+    @Test
+    void everyKeyStopsAtTheSameMonthlyLimit() {
+        for (String key : List.of(service.generateApiKey(), service.generateApiKey())) {
+            jdbc.update("UPDATE api_keys SET requests = ? WHERE key_hash = ?",
+                    ApiKeyService.MONTHLY_LIMIT - 1, ApiKeyService.hash(key));
+
+            assertDoesNotThrow(() -> service.validateAndConsume(key));
+            assertThrows(TooManyRequestsException.class, () -> service.validateAndConsume(key));
+        }
     }
 
     @Test
     void counterRestartsInANewMonth() {
-        String key = service.generateApiKey(ApiKey.Plan.FREE);
+        String key = service.generateApiKey();
         jdbc.update("UPDATE api_keys SET requests = ?, last_reset = ? WHERE key_hash = ?",
-                ApiKeyService.FREE_LIMIT, LocalDate.now().minusMonths(1).toString(), ApiKeyService.hash(key));
+                ApiKeyService.MONTHLY_LIMIT, LocalDate.now().minusMonths(1).toString(), ApiKeyService.hash(key));
 
         assertDoesNotThrow(() -> service.validateAndConsume(key));
         assertEquals(List.of(1), requestsOf(key));
@@ -70,7 +80,7 @@ class ApiKeyServiceTest {
 
     @Test
     void keysAreStoredOnlyAsHashes() {
-        String key = service.generateApiKey(ApiKey.Plan.FREE);
+        String key = service.generateApiKey();
 
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM api_keys WHERE key_hash = ?", Integer.class, key));
         assertEquals(List.of(0), requestsOf(key));

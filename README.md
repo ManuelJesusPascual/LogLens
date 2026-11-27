@@ -118,7 +118,7 @@ the response is:
 
 | Status | When |
 |--------|------|
-| 400 | Empty log or invalid parameter |
+| 400 | Empty log |
 | 401 | Missing or unknown API key |
 | 403 | Wrong admin password |
 | 413 | Log larger than 1 MB |

@@ -1,6 +1,5 @@
 package com.mjpascual.loglens.controller;
 
-import com.mjpascual.loglens.model.ApiKey;
 import com.mjpascual.loglens.service.ApiKeyService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -27,12 +26,11 @@ public class AdminController {
     }
 
     @PostMapping("/generate-key")
-    public String generateKey(@RequestHeader(value = "X-Admin-Password", defaultValue = "") String password,
-                              @RequestParam(defaultValue = "FREE") ApiKey.Plan plan) {
+    public String generateKey(@RequestHeader(value = "X-Admin-Password", defaultValue = "") String password) {
         // Constant-time comparison, so response timing does not reveal the password
         if (!MessageDigest.isEqual(adminPassword, password.getBytes(StandardCharsets.UTF_8))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
-        return apiKeyService.generateApiKey(plan);
+        return apiKeyService.generateApiKey();
     }
 }

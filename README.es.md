@@ -118,7 +118,7 @@ la respuesta es:
 
 | Estado | Cuándo |
 |--------|--------|
-| 400 | Log vacío o parámetro no válido |
+| 400 | Log vacío |
 | 401 | Falta la API key o no existe |
 | 403 | Contraseña de administrador incorrecta |
 | 413 | Log de más de 1 MB |

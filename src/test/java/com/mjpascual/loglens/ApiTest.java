@@ -63,9 +63,6 @@ class ApiTest {
                 .POST(HttpRequest.BodyPublishers.ofString("{}"))).statusCode());
         assertEquals(404, send(request("/nope")).statusCode());
         assertEquals(405, send(request("/admin/generate-key")).statusCode());
-        assertEquals(400, send(request("/admin/generate-key?plan=GOLD")
-                .header("X-Admin-Password", "test-password")
-                .POST(HttpRequest.BodyPublishers.noBody())).statusCode());
     }
 
     @Test

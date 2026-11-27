@@ -1,73 +1,87 @@
-# LogLens API
+English | [Español](README.es.md)
 
-LogLens is a lightweight developer tool built with Java 21 and Spring Boot 3. It analyzes application logs and provides a concise summary of unique errors, including their occurrences and the lines where they appear. Designed for fast deployment and easy integration into CI pipelines, LogLens helps developers quickly identify and debug issues without complex observability setups.
+# LogLens
 
-## 🚀 Features
+[![CI](https://github.com/ManuelJesusPascual/LogLens/actions/workflows/ci.yml/badge.svg)](https://github.com/ManuelJesusPascual/LogLens/actions/workflows/ci.yml)
 
-- Analyze plain-text logs via a simple API
-- Detect `ERROR`, `Exception`, and `Caused by` entries
-- Count occurrences of each unique error
-- Track the lines where each error appears
-- Returns a clean JSON response
-- Quick deployment with Spring Boot
+REST API that takes a plain-text application log and returns its unique errors, how many times each one appears and on which lines.
 
-## 🌐 Live Demo
+## Why
 
-The API is deployed and available at:
+Finding what actually failed in a long log usually means scrolling past the same stack trace hundreds of times. LogLens answers "which different errors are in here?" with a single HTTP call, so it can be used from a terminal or a CI job without setting up an observability platform.
 
-```
-https://loglens-production.up.railway.app/api/analyze
-```
+## Features
 
-You can also access the Swagger documentation at:
+- Detects lines containing `ERROR`, `Exception` or `Caused by`
+- Groups identical errors, ignoring whatever precedes the marker (timestamps, for example), and lists them in order of first appearance
+- API key authentication, with a monthly quota of 500 requests per key
+- The quota is enforced by a single conditional `UPDATE`, so concurrent requests cannot overrun it
+- API keys are stored only as SHA-256 hashes
+- Errors returned as [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details, without internal messages
+- OpenAPI documentation with Swagger UI
 
-```
-https://loglens-production.up.railway.app/swagger-ui.html
-```
+## Stack
 
-## 📦 Installation
+Java 21, Spring Boot 4.2, Spring JDBC, SQLite, springdoc-openapi, Lombok, Maven, JUnit 5, Docker and GitHub Actions.
 
-1. Clone the repository:
+## Getting started
 
-```bash
-git clone https://github.com/your-username/loglens.git
-cd loglens
-```
-
-2. Build the project with Maven:
+You need Docker.
 
 ```bash
-mvn clean package
+git clone https://github.com/ManuelJesusPascual/LogLens.git
+cd LogLens
+cp .env.example .env        # then set ADMIN_PASSWORD in .env
+docker compose up --build
 ```
 
-3. Run the application:
+The API listens on `http://localhost:8080`. Swagger UI is at `http://localhost:8080/swagger-ui/index.html`.
+
+To run it without Docker you need JDK 21:
 
 ```bash
-mvn spring-boot:run
+ADMIN_PASSWORD=choose-one ./mvnw spring-boot:run
 ```
 
-The API will be available at `http://localhost:8080/api/analyze`
+In PowerShell:
 
-## 🔹 Usage
-
-### Endpoint
-
-```
-POST /analyze
-Content-Type: text/plain
+```powershell
+$env:ADMIN_PASSWORD = "choose-one"; ./mvnw.cmd spring-boot:run
 ```
 
-### Request body
+The application does not start without `ADMIN_PASSWORD`.
 
-Paste your log as plain text. Example:
+## Usage
+
+The examples use a POSIX shell.
+
+### 1. Create an API key
+
+```bash
+curl -X POST http://localhost:8080/admin/generate-key -H "X-Admin-Password: choose-one"
+```
+
+The response body is the key. It is shown only once.
+
+### 2. Analyze a log
+
+```bash
+curl -X POST http://localhost:8080/api/analyze \
+  -H "Authorization: Bearer YOUR_KEY" \
+  -H "Content-Type: text/plain" \
+  --data-binary @app.log
+```
+
+For this `app.log`:
 
 ```
 2025-12-27 08:00:01 INFO Starting application
 2025-12-27 08:00:02 ERROR NullPointerException at UserService.java:45
 2025-12-27 08:00:04 ERROR Connection timeout
+2025-12-27 08:00:06 ERROR Connection timeout
 ```
 
-### Response
+the response is:
 
 ```json
 {
@@ -79,8 +93,8 @@ Paste your log as plain text. Example:
     },
     {
       "message": "ERROR Connection timeout",
-      "count": 1,
-      "lines": [4]
+      "count": 2,
+      "lines": [3, 4]
     }
   ],
   "summary": {
@@ -90,37 +104,44 @@ Paste your log as plain text. Example:
 }
 ```
 
-## ⚡ Error Handling
+`errorCount` is the number of unique errors.
 
-- Sending an empty log returns a `400 Bad Request` with message: `"Empty log"`
+### Errors
 
-## 🛠️ Technologies
-
-- Java 21
-- Spring Boot 3
-- Lombok
-- Maven
-- OpenCSV (for future parsing enhancements)
-- springdoc-openapi (Swagger UI)
-
-## 📊 Swagger / OpenAPI
-
-After running the app, you can access the API docs at:
-
-```
-http://localhost:8080/swagger-ui/index.html
+```json
+{
+  "detail": "Missing API Key",
+  "status": 401,
+  "title": "Unauthorized"
+}
 ```
 
-## 🧪 Testing
+| Status | When |
+|--------|------|
+| 400 | Empty log or invalid parameter |
+| 401 | Missing or unknown API key |
+| 403 | Wrong admin password |
+| 413 | Log larger than 1 MB |
+| 415 | Content type other than `text/plain` |
+| 429 | Monthly quota used up |
 
-Run unit tests:
+## Tests
 
 ```bash
-mvn test
+./mvnw verify
 ```
 
-Tests cover:
-- Basic log parsing
-- Error detection (`ERROR`, `Exception`, `Caused by`)
-- Grouping repeated errors
-- Handling logs without errors
+They cover log parsing, the quota under concurrency, the monthly reset, key hashing, authentication and HTTP error statuses.
+
+## Known limitations
+
+- Error detection is plain substring matching: an `INFO` line that mentions `Exception` is counted too.
+- Every request with a valid key counts against the quota, including rejected ones such as an empty log.
+- There is no endpoint to list or revoke keys.
+- The admin endpoint has no rate limiting. Do not expose it to the internet as it is.
+- SQLite limits the service to a single instance.
+- The application serves plain HTTP; put it behind a TLS proxy.
+
+## License
+
+[MIT](LICENSE)

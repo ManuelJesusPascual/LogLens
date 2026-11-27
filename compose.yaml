@@ -1,0 +1,12 @@
+services:
+  loglens:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in the environment or in a .env file}
+    volumes:
+      - loglens-data:/data
+
+volumes:
+  loglens-data:

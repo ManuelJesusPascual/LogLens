@@ -33,7 +33,7 @@ class ApiKeyServiceTest {
     @Test
     void concurrentRequestsCannotOverrunTheMonthlyLimit() throws Exception {
         String key = service.generateApiKey(ApiKey.Plan.FREE);
-        jdbc.update("UPDATE api_keys SET requests = ? WHERE key = ?", ApiKeyService.FREE_LIMIT - 1, key);
+        jdbc.update("UPDATE api_keys SET requests = ? WHERE key_hash = ?", ApiKeyService.FREE_LIMIT - 1, ApiKeyService.hash(key));
 
         Callable<Boolean> call = () -> {
             try {
@@ -56,8 +56,8 @@ class ApiKeyServiceTest {
     @Test
     void counterRestartsInANewMonth() {
         String key = service.generateApiKey(ApiKey.Plan.FREE);
-        jdbc.update("UPDATE api_keys SET requests = ?, last_reset = ? WHERE key = ?",
-                ApiKeyService.FREE_LIMIT, LocalDate.now().minusMonths(1).toString(), key);
+        jdbc.update("UPDATE api_keys SET requests = ?, last_reset = ? WHERE key_hash = ?",
+                ApiKeyService.FREE_LIMIT, LocalDate.now().minusMonths(1).toString(), ApiKeyService.hash(key));
 
         assertDoesNotThrow(() -> service.validateAndConsume(key));
         assertEquals(List.of(1), requestsOf(key));
@@ -68,7 +68,15 @@ class ApiKeyServiceTest {
         assertThrows(UnauthorizedException.class, () -> service.validateAndConsume("nope"));
     }
 
+    @Test
+    void keysAreStoredOnlyAsHashes() {
+        String key = service.generateApiKey(ApiKey.Plan.FREE);
+
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM api_keys WHERE key_hash = ?", Integer.class, key));
+        assertEquals(List.of(0), requestsOf(key));
+    }
+
     private List<Integer> requestsOf(String key) {
-        return jdbc.queryForList("SELECT requests FROM api_keys WHERE key = ?", Integer.class, key);
+        return jdbc.queryForList("SELECT requests FROM api_keys WHERE key_hash = ?", Integer.class, ApiKeyService.hash(key));
     }
 }

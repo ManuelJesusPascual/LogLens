@@ -15,8 +15,8 @@ public class ApiKeyRepository {
         this.jdbc = jdbc;
     }
 
-    public boolean exists(String key) {
-        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM api_keys WHERE key = ?", Integer.class, key);
+    public boolean exists(String keyHash) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM api_keys WHERE key_hash = ?", Integer.class, keyHash);
         return count != null && count > 0;
     }
 
@@ -26,20 +26,20 @@ public class ApiKeyRepository {
      *
      * @return false if the key does not exist or its monthly limit is used up
      */
-    public boolean tryConsume(String key, LocalDate today, int freeLimit) {
+    public boolean tryConsume(String keyHash, LocalDate today, int freeLimit) {
         String monthStart = today.withDayOfMonth(1).toString();
 
         return jdbc.update("""
                         UPDATE api_keys
                         SET requests = CASE WHEN last_reset < ? THEN 1 ELSE requests + 1 END,
                             last_reset = ?
-                        WHERE key = ? AND (plan <> 'FREE' OR last_reset < ? OR requests < ?)
+                        WHERE key_hash = ? AND (plan <> 'FREE' OR last_reset < ? OR requests < ?)
                         """,
-                monthStart, today.toString(), key, monthStart, freeLimit) == 1;
+                monthStart, today.toString(), keyHash, monthStart, freeLimit) == 1;
     }
 
-    public void save(String key, ApiKey.Plan plan, LocalDate today) {
-        jdbc.update("INSERT INTO api_keys (key, plan, requests, last_reset) VALUES (?, ?, 0, ?)",
-                key, plan.name(), today.toString());
+    public void save(String keyHash, ApiKey.Plan plan, LocalDate today) {
+        jdbc.update("INSERT INTO api_keys (key_hash, plan, requests, last_reset) VALUES (?, ?, 0, ?)",
+                keyHash, plan.name(), today.toString());
     }
 }

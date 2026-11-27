@@ -6,7 +6,11 @@ import com.mjpascual.loglens.model.ApiKey;
 import com.mjpascual.loglens.repository.ApiKeyRepository;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
+import java.util.HexFormat;
 import java.util.UUID;
 
 @Service
@@ -21,10 +25,11 @@ public class ApiKeyService {
     }
 
     public void validateAndConsume(String rawKey) {
-        if (repository.tryConsume(rawKey, LocalDate.now(), FREE_LIMIT)) {
+        String keyHash = hash(rawKey);
+        if (repository.tryConsume(keyHash, LocalDate.now(), FREE_LIMIT)) {
             return;
         }
-        if (repository.exists(rawKey)) {
+        if (repository.exists(keyHash)) {
             throw new TooManyRequestsException("Monthly limit exceeded");
         }
         throw new UnauthorizedException("Invalid API Key");
@@ -32,7 +37,17 @@ public class ApiKeyService {
 
     public String generateApiKey(ApiKey.Plan plan) {
         String apiKey = UUID.randomUUID().toString();
-        repository.save(apiKey, plan, LocalDate.now());
+        repository.save(hash(apiKey), plan, LocalDate.now());
         return apiKey;
+    }
+
+    /** Only the hash is stored. A fast hash is enough because keys are random, not user-chosen. */
+    static String hash(String key) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(key.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

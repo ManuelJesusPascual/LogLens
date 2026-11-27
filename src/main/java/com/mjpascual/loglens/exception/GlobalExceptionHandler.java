@@ -1,51 +1,36 @@
 package com.mjpascual.loglens.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.util.HashMap;
-import java.util.Map;
-
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 /**
- * Global exception handler for the loglens API.
- * <p>
- * This class intercepts exceptions thrown by REST controllers and transforms them
- * into standardized JSON error responses. It ensures that all unhandled exceptions
- * are caught and returned with appropriate HTTP status codes and error messages.
- *
+ * Turns every error into an RFC 9457 problem detail. Standard Spring MVC errors
+ * (404, 405, 415, invalid parameters...) are handled by the parent class.
  */
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    /**
-     * This method serves as a catch-all handler for any exception that is not
-     * specifically handled elsewhere. It returns a standardized error response
-     * containing the exception message.
-     *
-     * @param ex the exception that was thrown
-     * @return a ResponseEntity containing a map with the error message and HTTP 400 status
-     */
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, String>> handleAll(Exception ex) {
-        Map<String, String> resp = new HashMap<>();
-        resp.put("error", "Unexpected Error: " + ex.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(resp);
-    }
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<Map<String, String>> handleUnauthorized(UnauthorizedException ex) {
-        Map<String, String> resp = new HashMap<>();
-        resp.put("error", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(resp);
+    public ProblemDetail handleUnauthorized(UnauthorizedException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
     @ExceptionHandler(TooManyRequestsException.class)
-    public ResponseEntity<Map<String, String>> handleTooManyRequests(TooManyRequestsException ex) {
-        Map<String, String> resp = new HashMap<>();
-        resp.put("error", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(resp);
+    public ProblemDetail handleTooManyRequests(TooManyRequestsException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+    }
+
+    /** The cause goes to the server log only; clients never see internal messages. */
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleUnexpected(Exception ex) {
+        log.error("Unhandled error", ex);
+        return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error");
     }
 }

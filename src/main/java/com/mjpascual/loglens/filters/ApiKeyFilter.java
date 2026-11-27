@@ -1,16 +1,16 @@
 package com.mjpascual.loglens.filters;
 
-import com.mjpascual.loglens.exception.TooManyRequestsException;
 import com.mjpascual.loglens.exception.UnauthorizedException;
 import com.mjpascual.loglens.service.ApiKeyService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
 
@@ -18,9 +18,12 @@ import java.io.IOException;
 public class ApiKeyFilter extends OncePerRequestFilter {
 
     private final ApiKeyService apiKeyService;
+    private final HandlerExceptionResolver exceptionResolver;
 
-    public ApiKeyFilter(ApiKeyService apiKeyService) {
+    public ApiKeyFilter(ApiKeyService apiKeyService,
+                        @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {
         this.apiKeyService = apiKeyService;
+        this.exceptionResolver = exceptionResolver;
     }
 
     @Override
@@ -32,26 +35,13 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             if (auth == null || !auth.startsWith("Bearer ")) {
                 throw new UnauthorizedException("Missing API Key");
             }
-
-            String key = auth.substring(7);
-            apiKeyService.validateAndConsume(key);
-
-            filterChain.doFilter(request, response);
-
-        } catch (UnauthorizedException ex) {
-            writeError(response, HttpStatus.UNAUTHORIZED, ex.getMessage());
-        } catch (TooManyRequestsException ex) {
-            writeError(response, HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
-        } catch (Exception ex) {
-            writeError(response, HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error: " + ex.getMessage());
+            apiKeyService.validateAndConsume(auth.substring(7));
+        } catch (RuntimeException ex) {
+            // Same error format as the controllers (GlobalExceptionHandler)
+            exceptionResolver.resolveException(request, response, null, ex);
+            return;
         }
-    }
 
-    private void writeError(HttpServletResponse response, HttpStatus status, String message) throws IOException {
-        response.setStatus(status.value());
-        response.setContentType("application/json");
-        String json = "{\"error\":\"" + message + "\"}";
-        response.getWriter().write(json);
+        filterChain.doFilter(request, response);
     }
-
 }

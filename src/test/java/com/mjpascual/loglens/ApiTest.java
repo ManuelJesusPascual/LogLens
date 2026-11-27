@@ -11,6 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "spring.datasource.url=jdbc:sqlite:target/api-test.db",
@@ -47,6 +48,34 @@ class ApiTest {
     void apiDocsArePublic() throws Exception {
         assertEquals(200, send(request("/v3/api-docs")).statusCode());
         assertEquals(200, send(request("/swagger-ui/index.html")).statusCode());
+    }
+
+    @Test
+    void errorsUseTheRightStatusWithoutLeakingInternals() throws Exception {
+        String key = generateKey("test-password").body();
+
+        assertEquals(400, analyze(key, "   ").statusCode());
+        assertEquals(400, analyze(key, "").statusCode());
+        assertEquals(413, analyze(key, "x".repeat(1024 * 1024 + 1)).statusCode());
+        assertEquals(415, send(request("/api/analyze")
+                .header("Authorization", "Bearer " + key)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))).statusCode());
+        assertEquals(404, send(request("/nope")).statusCode());
+        assertEquals(405, send(request("/admin/generate-key")).statusCode());
+        assertEquals(400, send(request("/admin/generate-key?plan=GOLD")
+                .header("X-Admin-Password", "test-password")
+                .POST(HttpRequest.BodyPublishers.noBody())).statusCode());
+    }
+
+    @Test
+    void disguisedApiPathsStillNeedAKey() throws Exception {
+        for (String path : new String[]{"/%61pi/analyze", "//api/analyze", "/api;x/analyze", "/admin/../api/analyze"}) {
+            HttpResponse<String> response = send(request(path)
+                    .header("Content-Type", "text/plain")
+                    .POST(HttpRequest.BodyPublishers.ofString("ERROR boom")));
+            assertNotEquals(200, response.statusCode(), path);
+        }
     }
 
     private HttpResponse<String> generateKey(String password) throws IOException, InterruptedException {

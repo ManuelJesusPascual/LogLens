@@ -3,8 +3,9 @@ package com.mjpascual.loglens.controller;
 import com.mjpascual.loglens.model.ApiKey;
 import com.mjpascual.loglens.service.ApiKeyService;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -26,12 +27,12 @@ public class AdminController {
     }
 
     @PostMapping("/generate-key")
-    public ResponseEntity<String> generateKey(@RequestHeader(value = "X-Admin-Password", defaultValue = "") String password,
+    public String generateKey(@RequestHeader(value = "X-Admin-Password", defaultValue = "") String password,
                               @RequestParam(defaultValue = "FREE") ApiKey.Plan plan) {
         // Constant-time comparison, so response timing does not reveal the password
         if (!MessageDigest.isEqual(adminPassword, password.getBytes(StandardCharsets.UTF_8))) {
-            return ResponseEntity.status(403).body("Forbidden");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
-        return ResponseEntity.ok(apiKeyService.generateApiKey(plan));
+        return apiKeyService.generateApiKey(plan);
     }
 }

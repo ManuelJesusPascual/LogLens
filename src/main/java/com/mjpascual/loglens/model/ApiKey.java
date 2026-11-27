@@ -1,16 +1,9 @@
 package com.mjpascual.loglens.model;
 
-import lombok.Data;
+public final class ApiKey {
 
-import java.time.LocalDate;
-
-@Data
-public class ApiKey {
-
-    private String key;
-    private Plan plan;
-    private int requests;
-    private LocalDate lastReset;
+    private ApiKey() {
+    }
 
     public enum Plan {
         FREE,

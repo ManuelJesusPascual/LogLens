@@ -12,7 +12,7 @@ import java.util.UUID;
 @Service
 public class ApiKeyService {
 
-    private static final int FREE_LIMIT = 500;
+    public static final int FREE_LIMIT = 500;
 
     private final ApiKeyRepository repository;
 
@@ -20,44 +20,19 @@ public class ApiKeyService {
         this.repository = repository;
     }
 
-    public ApiKey validateAndConsume(String rawKey) {
-        ApiKey apiKey = repository.findByKey(rawKey)
-                .orElseThrow(() -> new UnauthorizedException("Invalid API Key"));
-
-        resetIfNewMonth(apiKey);
-
-        if (apiKey.getPlan() == ApiKey.Plan.FREE &&
-                apiKey.getRequests() >= FREE_LIMIT) {
+    public void validateAndConsume(String rawKey) {
+        if (repository.tryConsume(rawKey, LocalDate.now(), FREE_LIMIT)) {
+            return;
+        }
+        if (repository.exists(rawKey)) {
             throw new TooManyRequestsException("Monthly limit exceeded");
         }
-
-        apiKey.setRequests(apiKey.getRequests() + 1);
-        repository.update(apiKey);
-
-        return apiKey;
-    }
-
-    private void resetIfNewMonth(ApiKey apiKey) {
-        LocalDate now = LocalDate.now();
-
-        if (apiKey.getLastReset().getMonth() != now.getMonth()
-                || apiKey.getLastReset().getYear() != now.getYear()) {
-
-            apiKey.setRequests(0);
-            apiKey.setLastReset(now);
-        }
+        throw new UnauthorizedException("Invalid API Key");
     }
 
     public String generateApiKey(String plan) {
         String apiKey = UUID.randomUUID().toString();
-
-        ApiKey key = new ApiKey();
-        key.setKey(apiKey);
-        key.setPlan(ApiKey.Plan.valueOf(plan));
-        key.setRequests(0);
-        key.setLastReset(LocalDate.now());
-
-        repository.save(key);
+        repository.save(apiKey, ApiKey.Plan.valueOf(plan), LocalDate.now());
         return apiKey;
     }
 }

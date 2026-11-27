@@ -4,10 +4,7 @@ import com.mjpascual.loglens.model.ApiKey;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.sql.PreparedStatement;
-import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.util.Optional;
 
 @Repository
 public class ApiKeyRepository {
@@ -18,42 +15,31 @@ public class ApiKeyRepository {
         this.jdbc = jdbc;
     }
 
-    public Optional<ApiKey> findByKey(String key) {
-        return jdbc.query(
-                "SELECT key, plan, requests, last_reset FROM api_keys WHERE key = ?",
-                rs -> {
-                    if (!rs.next()) return Optional.empty();
-
-                    ApiKey apiKey = new ApiKey();
-                    apiKey.setKey(rs.getString("key"));
-                    apiKey.setPlan(ApiKey.Plan.valueOf(rs.getString("plan")));
-                    apiKey.setRequests(rs.getInt("requests"));
-                    apiKey.setLastReset(LocalDate.parse(rs.getString("last_reset")));
-
-                    return Optional.of(apiKey);
-                },
-                key
-        );
+    public boolean exists(String key) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM api_keys WHERE key = ?", Integer.class, key);
+        return count != null && count > 0;
     }
 
-    public void update(ApiKey apiKey) {
-        jdbc.update(
-                "UPDATE api_keys SET requests = ?, last_reset = ? WHERE key = ?",
-                apiKey.getRequests(),
-                apiKey.getLastReset().toString(),
-                apiKey.getKey()
-        );
+    /**
+     * Counts one request against the key in a single statement, so concurrent calls cannot
+     * overrun the quota. The counter restarts on the first request of a new month.
+     *
+     * @return false if the key does not exist or its monthly limit is used up
+     */
+    public boolean tryConsume(String key, LocalDate today, int freeLimit) {
+        String monthStart = today.withDayOfMonth(1).toString();
+
+        return jdbc.update("""
+                        UPDATE api_keys
+                        SET requests = CASE WHEN last_reset < ? THEN 1 ELSE requests + 1 END,
+                            last_reset = ?
+                        WHERE key = ? AND (plan <> 'FREE' OR last_reset < ? OR requests < ?)
+                        """,
+                monthStart, today.toString(), key, monthStart, freeLimit) == 1;
     }
 
-    public void save(ApiKey apiKey) {
-        String sql = "INSERT INTO api_keys (requests, plan, last_reset, key) VALUES (?, ?, ?, ?)";
-
-        jdbc.update(
-                sql,
-                apiKey.getRequests(),
-                apiKey.getPlan(),
-                apiKey.getLastReset().toString(),
-                apiKey.getKey()
-        );
+    public void save(String key, ApiKey.Plan plan, LocalDate today) {
+        jdbc.update("INSERT INTO api_keys (key, plan, requests, last_reset) VALUES (?, ?, 0, ?)",
+                key, plan.name(), today.toString());
     }
 }

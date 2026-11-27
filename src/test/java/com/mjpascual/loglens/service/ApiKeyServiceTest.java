@@ -2,6 +2,7 @@ package com.mjpascual.loglens.service;
 
 import com.mjpascual.loglens.exception.TooManyRequestsException;
 import com.mjpascual.loglens.exception.UnauthorizedException;
+import com.mjpascual.loglens.model.ApiKey;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -31,7 +32,7 @@ class ApiKeyServiceTest {
 
     @Test
     void concurrentRequestsCannotOverrunTheMonthlyLimit() throws Exception {
-        String key = service.generateApiKey("FREE");
+        String key = service.generateApiKey(ApiKey.Plan.FREE);
         jdbc.update("UPDATE api_keys SET requests = ? WHERE key = ?", ApiKeyService.FREE_LIMIT - 1, key);
 
         Callable<Boolean> call = () -> {
@@ -54,7 +55,7 @@ class ApiKeyServiceTest {
 
     @Test
     void counterRestartsInANewMonth() {
-        String key = service.generateApiKey("FREE");
+        String key = service.generateApiKey(ApiKey.Plan.FREE);
         jdbc.update("UPDATE api_keys SET requests = ?, last_reset = ? WHERE key = ?",
                 ApiKeyService.FREE_LIMIT, LocalDate.now().minusMonths(1).toString(), key);
 

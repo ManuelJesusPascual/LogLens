@@ -30,9 +30,9 @@ public class ApiKeyService {
         throw new UnauthorizedException("Invalid API Key");
     }
 
-    public String generateApiKey(String plan) {
+    public String generateApiKey(ApiKey.Plan plan) {
         String apiKey = UUID.randomUUID().toString();
-        repository.save(apiKey, ApiKey.Plan.valueOf(plan), LocalDate.now());
+        repository.save(apiKey, plan, LocalDate.now());
         return apiKey;
     }
 }

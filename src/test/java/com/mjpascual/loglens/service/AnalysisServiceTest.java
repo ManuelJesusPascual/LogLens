@@ -61,6 +61,14 @@ class AnalysisServiceTest {
     }
 
     @Test
+    void analyze_errorsAreListedInOrderOfFirstAppearance() {
+        AnalyzeResponse response = analysisService.analyze("ERROR zulu\nERROR alpha\nERROR zulu\nERROR mike");
+
+        assertEquals(List.of("ERROR zulu", "ERROR alpha", "ERROR mike"),
+                response.getErrors().stream().map(ErrorInfo::getMessage).toList());
+    }
+
+    @Test
     void analyze_noErrors_returnsEmptyList() {
         String log = """
                 2025-12-27 08:20:00 INFO Startup complete

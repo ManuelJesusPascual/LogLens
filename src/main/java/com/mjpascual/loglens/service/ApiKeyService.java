@@ -4,6 +4,8 @@ import com.mjpascual.loglens.exception.TooManyRequestsException;
 import com.mjpascual.loglens.exception.UnauthorizedException;
 import com.mjpascual.loglens.model.ApiKey;
 import com.mjpascual.loglens.repository.ApiKeyRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -17,6 +19,8 @@ import java.util.UUID;
 public class ApiKeyService {
 
     public static final int FREE_LIMIT = 500;
+
+    private static final Logger log = LoggerFactory.getLogger(ApiKeyService.class);
 
     private final ApiKeyRepository repository;
 
@@ -38,6 +42,7 @@ public class ApiKeyService {
     public String generateApiKey(ApiKey.Plan plan) {
         String apiKey = UUID.randomUUID().toString();
         repository.save(hash(apiKey), plan, LocalDate.now());
+        log.info("Created a {} API key", plan);
         return apiKey;
     }
 

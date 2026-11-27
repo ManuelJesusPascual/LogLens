@@ -5,7 +5,7 @@ import com.mjpascual.loglens.model.ErrorInfo;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,10 +26,11 @@ public class AnalysisService {
      * 4. Returns a summary with error details and statistics
      *
      * @param log The complete log content as a single string
-     * @return AnalyzeResponse containing the list of unique errors and a summary
+     * @return unique errors in order of first appearance, plus a summary whose errorCount
+     * is the number of unique errors
      */
     public AnalyzeResponse analyze(String log) {
-        Map<String, ErrorInfo> errors = new HashMap<>();
+        Map<String, ErrorInfo> errors = new LinkedHashMap<>();
 
         String[] lines = log.split("\\R");
 
@@ -48,8 +49,6 @@ public class AnalysisService {
 
         AnalyzeResponse.Summary summary = new AnalyzeResponse.Summary(lines.length, errorList.size());
         return new AnalyzeResponse(errorList, summary);
-
-
     }
 
     /**
@@ -60,7 +59,6 @@ public class AnalysisService {
      */
     private boolean checkIfIsError(String line) {
         return line.contains("ERROR") || line.contains("Exception") || line.contains("Caused by");
-
     }
 
     /**

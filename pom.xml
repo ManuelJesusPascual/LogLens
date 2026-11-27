@@ -12,24 +12,14 @@
     <artifactId>loglens</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>Loglens API</name>
-    <description>
-        LogLens is a lightweight Java 21 &amp; Spring Boot 3 tool that analyzes application logs, summarizing unique errors,
-        their occurrences, and line numbers. Designed for fast deployment and easy CI integration, it helps developers
-        quickly identify and debug issues without complex observability setups.
-    </description>
-    <url/>
+    <description>REST API that summarizes the unique errors of an application log</description>
+    <url>https://github.com/ManuelJesusPascual/LogLens</url>
     <licenses>
-        <license/>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/license/mit</url>
+        </license>
     </licenses>
-    <developers>
-        <developer/>
-    </developers>
-    <scm>
-        <connection/>
-        <developerConnection/>
-        <tag/>
-        <url/>
-    </scm>
     <properties>
         <java.version>21</java.version>
     </properties>

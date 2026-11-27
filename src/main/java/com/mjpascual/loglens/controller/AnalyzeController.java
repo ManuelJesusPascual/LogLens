@@ -9,8 +9,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import static org.apache.commons.lang3.StringUtils.isBlank;
-
 /**
  * REST controller for log analysis.
  * Exposes endpoints to receive logs in plain text format and return
@@ -40,7 +38,7 @@ public class AnalyzeController {
     @PostMapping(value = "/analyze", consumes = MediaType.TEXT_PLAIN_VALUE)
     public ResponseEntity<?> validate(@RequestBody String log) {
 
-        if (isBlank(log)) {
+        if (log.isBlank()) {
             return ResponseEntity.badRequest().body("Empty log");
         }
 
